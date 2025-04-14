@@ -16,27 +16,35 @@ def generate_honeycomb_svg(columns: int, rows: int, length: float, angle: float,
     Returns:
         SVG content as a string
     """
-    # Calculate geometric properties
-    inner_angle = (180 - angle) / 2
-    inner_angle_rad = math.radians(inner_angle)
+    # Calculate geometric properties of a single hexagon cell
     
-    # Calculate dimensions of a single honeycomb
-    hex_height = length * (1 + 2 * math.sin(inner_angle_rad))
-    hex_width = 2 * length * math.cos(inner_angle_rad)
+    # The angle between the top sides
+    internal_angle = angle
     
-    # Calculate offsets for positioning
-    # Horizontal distance between centers of adjacent hexagons in the same row
-    x_step = hex_width + distance
+    # Calculate angle for the side relative to horizontal
+    alpha = (180 - internal_angle) / 2
+    alpha_rad = math.radians(alpha)
     
-    # Vertical distance between centers of adjacent rows
-    y_step = 0.75 * hex_height + distance / 2
+    # Calculate width and height of a single hexagon
+    # Height calculation: from top point to bottom point
+    hexagon_height = 2 * length * math.sin(alpha_rad) + length
     
-    # Horizontal offset for even rows
+    # Width calculation: from leftmost to rightmost point
+    hexagon_width = 2 * length * math.cos(alpha_rad)
+    
+    # Calculate step sizes between cells
+    # Horizontal distance between centers of hexagons in the same row
+    x_step = hexagon_width + distance
+    
+    # Vertical distance between rows
+    y_step = length + length * math.sin(alpha_rad) + distance/2
+    
+    # Offset for odd/even rows
     x_offset = x_step / 2
     
-    # Calculate total SVG dimensions
+    # Calculate SVG dimensions
     total_width = columns * x_step + x_offset
-    total_height = rows * y_step + 0.25 * hex_height
+    total_height = rows * y_step + length * math.sin(alpha_rad)
     
     # Start generating SVG
     svg = f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -48,20 +56,22 @@ def generate_honeycomb_svg(columns: int, rows: int, length: float, angle: float,
     
     # Generate honeycomb cells
     for row in range(rows):
-        # Determine if this is an even row (0-indexed)
-        is_even_row = row % 2 == 0
+        is_odd_row = row % 2 == 1
         
-        for col in range(columns):
-            # Calculate cell center position
-            x_center = col * x_step
-            if not is_even_row:
-                x_center += x_offset
-            y_center = row * y_step
+        # Set number of columns for this row (may be fewer for odd rows)
+        row_columns = columns if not is_odd_row else columns - 1
+        
+        for col in range(row_columns):
+            # Calculate center position of this hexagon
+            x = col * x_step
+            if is_odd_row:
+                x += x_offset
+            y = row * y_step
             
-            # Generate points for the honeycomb
-            points = calculate_honeycomb_points(x_center, y_center, length, angle)
+            # Generate points for this hexagon
+            points = calculate_hexagon(x, y, length, internal_angle)
             
-            # Add the hexagon to the SVG
+            # Add hexagon to SVG
             points_str = " ".join([f"{x},{y}" for x, y in points])
             svg += f'  <polygon points="{points_str}" fill="none" stroke="black" stroke-width="0.5"/>\n'
     
@@ -70,35 +80,38 @@ def generate_honeycomb_svg(columns: int, rows: int, length: float, angle: float,
     
     return svg
 
-def calculate_honeycomb_points(x_center: float, y_center: float, length: float, angle: float) -> List[Tuple[float, float]]:
+def calculate_hexagon(x: float, y: float, side_length: float, top_angle: float) -> List[Tuple[float, float]]:
     """
-    Calculate the six points of a honeycomb with the center at (x_center, y_center).
+    Calculate the six points of a hexagon with top-center at (x, y).
+    All sides have equal length = side_length.
+    The angle between the two top sides = top_angle.
     
     Args:
-        x_center: X-coordinate of the center point of the honeycomb
-        y_center: Y-coordinate of the center point of the honeycomb
-        length: Length of each side of the honeycomb
-        angle: Angle between the top sides in degrees
+        x: X-coordinate of the top-center point
+        y: Y-coordinate of the top-center point
+        side_length: Length of each side of the hexagon
+        top_angle: Angle between the two top sides in degrees
         
     Returns:
-        List of (x, y) tuples representing the six corners of the honeycomb
+        List of (x, y) tuples representing the six corners of the hexagon
     """
-    # Calculate geometry
-    inner_angle = (180 - angle) / 2
-    inner_angle_rad = math.radians(inner_angle)
+    # Calculate half of the top angle
+    half_angle = (180 - top_angle) / 2
+    half_angle_rad = math.radians(half_angle)
     
-    # Calculate the dimensions
-    h = length * math.sin(inner_angle_rad)
-    w = length * math.cos(inner_angle_rad)
+    # Calculate horizontal and vertical components of the sides
+    dx = side_length * math.cos(half_angle_rad)
+    dy = side_length * math.sin(half_angle_rad)
     
-    # Calculate the six points around the center
+    # Calculate the six vertices
+    # Starting from top-left, going clockwise
     points = [
-        (x_center - w, y_center - h),           # Top-left
-        (x_center + w, y_center - h),           # Top-right
-        (x_center + length, y_center),          # Right
-        (x_center + w, y_center + h),           # Bottom-right
-        (x_center - w, y_center + h),           # Bottom-left
-        (x_center - length, y_center),          # Left
+        (x - dx, y + dy),                    # Top-left
+        (x + dx, y + dy),                    # Top-right
+        (x + dx + side_length, y + dy * 2),  # Right
+        (x + dx, y + dy * 2 + side_length),  # Bottom-right
+        (x - dx, y + dy * 2 + side_length),  # Bottom-left
+        (x - dx - side_length, y + dy * 2)   # Left
     ]
     
     return points

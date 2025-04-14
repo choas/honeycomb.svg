@@ -1,153 +1,112 @@
 import math
-import sys
-from typing import List, Tuple
+import logging
 
-def generate_honeycomb_svg(columns: int, rows: int, length: float, angle: float, distance: float) -> str:
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
+
+def generate_honeycomb_svg(columns=10, rows=8, length=50, angle=120, distance=2, filename="honeycomb.svg"):
     """
     Generate an SVG file with a honeycomb pattern.
     
     Args:
         columns: Number of columns per row
-        rows: Number of rows (includes odd and even rows)
-        length: Length of each side of the honeycomb in mm
-        angle: Angle between the top sides of the honeycomb in degrees
-        distance: Distance between each honeycomb in mm
-        
-    Returns:
-        SVG content as a string
+        rows: Total number of rows (includes odd and even rows)
+        length: Length of each side of a honeycomb in mm
+        angle: Angle between the top and bottom tips of the honeycomb in degrees
+        distance: Distance between honeycombs in mm
+        filename: Output SVG filename
     """
-    # Calculate geometric properties of a single hexagon cell
+    # Calculate dimensions of a single honeycomb
+    angle_rad = math.radians(angle)
+    # Height of the hexagon from top to bottom
+    height = length * (1 + 2 * math.sin(math.radians(90 - angle/2)))
+    # Width of the hexagon from side to side
+    width = 2 * length * math.cos(math.radians(90 - angle/2))
     
-    # The angle between the top sides
-    internal_angle = angle
+    logger.info(f"Honeycomb dimensions - Width: {width:.2f}mm, Height: {height:.2f}mm")
     
-    # Calculate angle for the side relative to horizontal
-    alpha = (180 - internal_angle) / 2
-    alpha_rad = math.radians(alpha)
+    # Calculate horizontal and vertical spacing between honeycombs
+    h_spacing = width + distance
+    v_spacing = height * 3/4 + distance
     
-    # Calculate width and height of a single hexagon
-    # Height calculation: from top point to bottom point
-    hexagon_height = 2 * length * math.sin(alpha_rad) + length
+    # Calculate the offset for odd rows
+    odd_row_offset = width / 2
     
-    # Width calculation: from leftmost to rightmost point
-    hexagon_width = 2 * length * math.cos(alpha_rad)
+    # Check if the odd_row_offset and distance are compatible
+    min_offset = width/2
+    if odd_row_offset < min_offset:
+        logger.info(f"Adjusting odd row offset from {odd_row_offset:.2f} to minimum {min_offset:.2f}")
+        odd_row_offset = min_offset
     
-    # Calculate step sizes between cells
-    # Horizontal distance between centers of hexagons in the same row
-    x_step = hexagon_width + distance
+    # Verify spacing is sufficient to prevent overlapping
+    min_v_spacing = height/2 + distance
+    if v_spacing < min_v_spacing:
+        logger.info(f"Adjusting vertical spacing from {v_spacing:.2f} to minimum {min_v_spacing:.2f}")
+        v_spacing = min_v_spacing
     
-    # Vertical distance between rows
-    y_step = length + length * math.sin(alpha_rad) + distance/2
+    # Calculate total SVG dimensions
+    total_width = (columns - 0.5) * h_spacing + distance
+    total_height = rows * v_spacing + height/4 + distance
     
-    # Offset for odd/even rows
-    x_offset = x_step / 2
+    logger.info(f"Total SVG dimensions - Width: {total_width:.2f}mm, Height: {total_height:.2f}mm")
     
-    # Calculate SVG dimensions
-    total_width = columns * x_step + x_offset
-    total_height = rows * y_step + length * math.sin(alpha_rad)
-    
-    # Start generating SVG
+    # Start creating the SVG
     svg = f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg width="{total_width}mm" height="{total_height}mm" viewBox="0 0 {total_width} {total_height}"
      xmlns="http://www.w3.org/2000/svg">
   <title>Honeycomb Pattern</title>
   <desc>Generated honeycomb pattern with {columns} columns and {rows} rows</desc>
+  <style>
+    .hexagon {{
+      fill: none;
+      stroke: black;
+      stroke-width: 1;
+    }}
+  </style>
 """
     
-    # Generate honeycomb cells
+    # Generate each honeycomb
     for row in range(rows):
-        is_odd_row = row % 2 == 1
+        # Calculate row offset (odd rows are shifted)
+        row_offset = odd_row_offset if row % 2 == 1 else 0
         
-        # Set number of columns for this row (may be fewer for odd rows)
-        row_columns = columns if not is_odd_row else columns - 1
+        # Determine actual number of columns for this row
+        actual_columns = columns - 1 if row % 2 == 1 else columns
         
-        for col in range(row_columns):
-            # Calculate center position of this hexagon
-            x = col * x_step
-            if is_odd_row:
-                x += x_offset
-            y = row * y_step
+        for col in range(actual_columns):
+            x_center = col * h_spacing + row_offset + distance + width/2
+            y_center = row * v_spacing + distance + height/2
             
-            # Generate points for this hexagon
-            points = calculate_hexagon(x, y, length, internal_angle)
+            # Generate hexagon points
+            points = []
+            for i in range(6):
+                # Angle for each vertex (starting from the right and going counter-clockwise)
+                theta = math.radians(60 * i - 30)
+                x = x_center + length * math.cos(theta)
+                y = y_center + length * math.sin(theta)
+                points.append(f"{x:.2f},{y:.2f}")
             
             # Add hexagon to SVG
-            points_str = " ".join([f"{x},{y}" for x, y in points])
-            svg += f'  <polygon points="{points_str}" fill="none" stroke="black" stroke-width="0.5"/>\n'
+            svg += f'  <polygon class="hexagon" points="{" ".join(points)}" />\n'
     
-    # Close the SVG
+    # Close SVG
     svg += "</svg>"
     
+    # Write SVG to file
+    with open(filename, 'w') as f:
+        f.write(svg)
+    
+    logger.info(f"SVG file '{filename}' has been created successfully.")
     return svg
 
-def calculate_hexagon(x: float, y: float, side_length: float, top_angle: float) -> List[Tuple[float, float]]:
-    """
-    Calculate the six points of a hexagon with top-center at (x, y).
-    All sides have equal length = side_length.
-    The angle between the two top sides = top_angle.
-    
-    Args:
-        x: X-coordinate of the top-center point
-        y: Y-coordinate of the top-center point
-        side_length: Length of each side of the hexagon
-        top_angle: Angle between the two top sides in degrees
-        
-    Returns:
-        List of (x, y) tuples representing the six corners of the hexagon
-    """
-    # Calculate half of the top angle
-    half_angle = (180 - top_angle) / 2
-    half_angle_rad = math.radians(half_angle)
-    
-    # Calculate horizontal and vertical components of the sides
-    dx = side_length * math.cos(half_angle_rad)
-    dy = side_length * math.sin(half_angle_rad)
-    
-    # Calculate the six vertices
-    # Starting from top-left, going clockwise
-    points = [
-        (x - dx, y + dy),                    # Top-left
-        (x + dx, y + dy),                    # Top-right
-        (x + dx + side_length, y + dy * 2),  # Right
-        (x + dx, y + dy * 2 + side_length),  # Bottom-right
-        (x - dx, y + dy * 2 + side_length),  # Bottom-left
-        (x - dx - side_length, y + dy * 2)   # Left
-    ]
-    
-    return points
-
-def save_svg_to_file(svg_content: str, filename: str) -> None:
-    """Save SVG content to a file."""
-    with open(filename, 'w') as f:
-        f.write(svg_content)
-
-def main():
-    # Default parameters
-    columns = 10
-    rows = 8
-    length = 50
-    angle = 120
-    distance = 2
-    
-    # Parse command line arguments if provided
-    if len(sys.argv) > 1:
-        try:
-            columns = int(sys.argv[1])
-            rows = int(sys.argv[2])
-            length = float(sys.argv[3])
-            angle = float(sys.argv[4])
-            distance = float(sys.argv[5])
-        except (IndexError, ValueError):
-            print("Usage: python honeycomb.py [columns rows length angle distance]")
-            print("Using default values instead.")
-    
-    # Generate SVG
-    svg_content = generate_honeycomb_svg(columns, rows, length, angle, distance)
-    
-    # Save to file
-    filename = f"honeycomb_c{columns}_r{rows}_l{length}_a{angle}_d{distance}.svg"
-    save_svg_to_file(svg_content, filename)
-    print(f"SVG file saved as {filename}")
-
 if __name__ == "__main__":
-    main()
+    # Use the parameters provided in the problem
+    generate_honeycomb_svg(
+        columns=10,
+        rows=8,
+        length=50,
+        angle=120,
+        distance=2,
+        filename="honeycomb.svg"
+    )
+

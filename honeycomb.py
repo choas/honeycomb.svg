@@ -4,13 +4,13 @@ from typing import List, Tuple
 
 def generate_honeycomb_svg(columns: int, rows: int, length: float, angle: float, distance: float) -> str:
     """
-    Generate an SVG file with a honeycomb pattern.
+    Generate an SVG file with a honeycomb pattern rotated 90 degrees.
     
     Args:
         columns: Number of columns per row
         rows: Number of rows (includes odd and even rows)
         length: Length of each side of the honeycomb in mm
-        angle: Angle between the top and bottom sides of the honeycomb in degrees
+        angle: Angle between the left and right sides of the honeycomb in degrees
         distance: Distance between each honeycomb in mm
         
     Returns:
@@ -20,51 +20,49 @@ def generate_honeycomb_svg(columns: int, rows: int, length: float, angle: float,
     # Convert angle to radians
     angle_rad = math.radians(angle)
     
-    # Calculate height and width of a single honeycomb
-    # For a regular hexagon, height is 2 * length * sin(60°)
-    # For a non-regular hexagon, we need to adjust based on the provided angle
+    # Calculate height and width of a single honeycomb (rotated 90 degrees)
     inner_angle = (180 - angle) / 2
     inner_angle_rad = math.radians(inner_angle)
     
-    # Calculate the height of the honeycomb (vertical distance)
-    h = 2 * length * math.sin(inner_angle_rad)
+    # For the 90-degree rotated honeycomb:
+    # Width becomes the vertical dimension of the original
+    # Height becomes the horizontal dimension of the original
+    w = 2 * length * math.sin(inner_angle_rad)  # Now this is the horizontal dimension
+    h = 2 * length * math.cos(inner_angle_rad) + length  # Now this is the vertical dimension
     
-    # Calculate the width of the honeycomb
-    w = 2 * length * math.cos(inner_angle_rad) + length
+    # Calculate the horizontal offset for even columns
+    offset_y = w / 2 + distance / 2
     
-    # Calculate the horizontal offset for even rows
-    offset_x = w / 2 + distance / 2
+    # Calculate the vertical offset between columns
+    offset_x = h + distance
     
-    # Calculate the vertical offset between rows
-    offset_y = h + distance
-    
-    # Calculate the horizontal spacing between honeycombs in the same row
-    spacing_x = w + distance
+    # Calculate the vertical spacing between honeycombs in the same column
+    spacing_y = w + distance
     
     # Calculate the total width and height of the SVG
-    total_width = columns * spacing_x + offset_x
-    total_height = rows * offset_y / 2 + h / 2
+    total_width = columns * offset_x / 2 + h / 2
+    total_height = rows * spacing_y + offset_y
     
     # Start generating SVG
     svg = f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg width="{total_width}mm" height="{total_height}mm" viewBox="0 0 {total_width} {total_height}"
      xmlns="http://www.w3.org/2000/svg">
-  <title>Honeycomb Pattern</title>
-  <desc>Generated honeycomb pattern with {columns} columns and {rows} rows</desc>
+  <title>Honeycomb Pattern (90° Rotation)</title>
+  <desc>Generated honeycomb pattern with {columns} columns and {rows} rows, rotated 90 degrees</desc>
 """
     
     # Generate honeycomb cells
-    for row in range(rows):
-        is_even_row = row % 2 == 1
-        # Adjust the number of columns for even rows if needed
-        cols = columns - 1 if is_even_row else columns
+    for col in range(columns):
+        is_even_col = col % 2 == 1
+        # Adjust the number of rows for even columns if needed
+        row_count = rows - 1 if is_even_col else rows
         
-        for col in range(cols):
+        for row in range(row_count):
             # Calculate cell position
-            x = col * spacing_x
-            if is_even_row:
-                x += offset_x
-            y = row * offset_y / 2
+            y = row * spacing_y
+            if is_even_col:
+                y += offset_y
+            x = col * offset_x / 2
             
             # Generate points for the honeycomb
             points = calculate_honeycomb_points(x, y, length, angle)
@@ -80,13 +78,13 @@ def generate_honeycomb_svg(columns: int, rows: int, length: float, angle: float,
 
 def calculate_honeycomb_points(x: float, y: float, length: float, angle: float) -> List[Tuple[float, float]]:
     """
-    Calculate the six points of a honeycomb.
+    Calculate the six points of a honeycomb rotated 90 degrees.
     
     Args:
-        x: X-coordinate of the top-left point of the honeycomb
-        y: Y-coordinate of the top-left point of the honeycomb
+        x: X-coordinate of the left-middle point of the honeycomb
+        y: Y-coordinate of the left-middle point of the honeycomb
         length: Length of each side of the honeycomb
-        angle: Angle between the top and bottom sides in degrees
+        angle: Angle between the left and right sides in degrees
         
     Returns:
         List of (x, y) tuples representing the six corners of the honeycomb
@@ -95,18 +93,18 @@ def calculate_honeycomb_points(x: float, y: float, length: float, angle: float) 
     inner_angle = (180 - angle) / 2
     inner_angle_rad = math.radians(inner_angle)
     
-    # Calculate the offset for horizontal sides
-    dx = length * math.cos(inner_angle_rad)
-    dy = length * math.sin(inner_angle_rad)
+    # Calculate the offset for vertical sides
+    dx = length * math.sin(inner_angle_rad)
+    dy = length * math.cos(inner_angle_rad)
     
-    # Calculate the six points
+    # Calculate the six points for a 90-degree rotated honeycomb
     points = [
-        (x, y),  # Top-left
-        (x + length, y),  # Top-right
-        (x + length + dx, y + dy),  # Right
-        (x + length, y + 2 * dy),  # Bottom-right
-        (x, y + 2 * dy),  # Bottom-left
-        (x - dx, y + dy),  # Left
+        (x, y),  # Left-middle
+        (x + dx, y - dy),  # Top-left
+        (x + dx + length, y - dy),  # Top-right
+        (x + 2 * dx + length, y),  # Right-middle
+        (x + dx + length, y + dy),  # Bottom-right
+        (x + dx, y + dy),  # Bottom-left
     ]
     
     return points
@@ -140,7 +138,7 @@ def main():
     svg_content = generate_honeycomb_svg(columns, rows, length, angle, distance)
     
     # Save to file
-    filename = f"honeycomb_c{columns}_r{rows}_l{length}_a{angle}_d{distance}.svg"
+    filename = f"honeycomb_rotated_c{columns}_r{rows}_l{length}_a{angle}_d{distance}.svg"
     save_svg_to_file(svg_content, filename)
     print(f"SVG file saved as {filename}")
 

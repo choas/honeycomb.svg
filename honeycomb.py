@@ -30,7 +30,7 @@ def generate_honeycomb_svg(columns=10, rows=8, length=50, angle=120, distance=2,
     v_spacing = height * 3/4 + distance
     
     # Calculate the offset for odd rows
-    odd_row_offset = width / 2
+    odd_row_offset = (width + distance) / 2
     
     # Check if the odd_row_offset and distance are compatible
     min_offset = width/2
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         rows=8,
         length=50,
         angle=120,
-        distance=2,
+        distance=5, ### 10% length
         filename="honeycomb.svg"
     )
 

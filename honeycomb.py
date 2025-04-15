@@ -16,6 +16,10 @@ def generate_honeycomb_svg(columns=10, rows=8, length=50, angle=120, distance=2,
         distance: Distance between honeycombs in mm
         filename: Output SVG filename
     """
+    length = length * (50.0 / 13.221) # add factor for Fusion360
+    distance = distance * (50.0 / 13.221) # add factor for Fusion360
+    logger.info(f"Generating honeycomb SVG with {columns} columns and {rows} rows.")
+    
     # Calculate dimensions of a single honeycomb
     angle_rad = math.radians(angle)
     # Height of the hexagon from top to bottom
@@ -102,11 +106,11 @@ def generate_honeycomb_svg(columns=10, rows=8, length=50, angle=120, distance=2,
 if __name__ == "__main__":
     # Use the parameters provided in the problem
     generate_honeycomb_svg(
-        columns=10,
-        rows=8,
-        length=50,
+        columns=9,
+        rows=10,
+        length=5,
         angle=120,
-        distance=5, ### 10% length
+        distance=2,
         filename="honeycomb.svg"
     )
 

@@ -1,5 +1,23 @@
 # honeycomb.svg
 
+Create a honecomb structured SVG file:
+
+<img src="./honeycomb.svg" width="250">
+
+To create your own honeycomb SVG file, adjust the parameters in the `__main__` function and run the program (Python is required):
+
+```shell
+python3 honeycomb.svg
+```
+
+This will create the SVG file.
+
+## Fusion 360
+
+Create a sketch and then insert the SVG file with Insert / Insert SVG. Use Extrude to cut out the honeycombs.
+
+## AI generated code
+
 This code was mostely generated with Claude 3.7 and this prompt:
 
 ```text
